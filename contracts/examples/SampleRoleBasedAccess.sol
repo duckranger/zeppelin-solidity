@@ -11,10 +11,9 @@ import "../rbac/RoleDirectory.sol";
 contract SampleRoleBasedAccess is Secured {
 
   string public safe;
-  address private lastModifier;
+  address public lastModifier;
 
   function SampleRoleBasedAccess(RoleDirectory _roleDirectory) Secured(_roleDirectory) {
-
   }
 
   function allowAnyone(string _val ) {
@@ -31,6 +30,4 @@ contract SampleRoleBasedAccess is Secured {
     safe = _val;
     lastModifier = msg.sender;
   }
-
-
 }
