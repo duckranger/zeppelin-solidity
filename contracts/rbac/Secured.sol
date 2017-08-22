@@ -1,6 +1,6 @@
 pragma solidity ^0.4.11;
 
-
+import './RoleDirectory.sol';
 /**
  * @title SecurityControl
  * @dev A simple security centre to define roles and assign them to addresses

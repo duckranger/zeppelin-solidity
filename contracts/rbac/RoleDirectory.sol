@@ -27,14 +27,13 @@ contract RoleDirectory is Ownable {
     userRoles[_user].push(systemRoles[_role]);
   }
 
-  function userInRole(address _user, string _roleName) returns (bool) {
+  function userInRole(address _user, string _roleName) constant returns (bool) {
     require(roleExists(_roleName));
-    Role requiredRole = systemRoles[_roleName];
     for (uint i = 0 ; i < userRoles[_user].length; i++) {
-      if (userRoles[_user][i].weight > requiredRole.weight ||
-        userRoles[_user][i].name == _roleName) {
-          return true;
-        }
+      if ( (userRoles[_user][i].weight > systemRoles[_roleName].weight) ||
+           (sha3(userRoles[_user][i].name) == sha3(_roleName)) ) {
+        return true;
+      }
     }
     return false;
   }
@@ -44,7 +43,7 @@ contract RoleDirectory is Ownable {
   //@param _name - the name of the new role
   //@param _weight - weight to the role. This is used for hierarchy
   function addSystemRole(string _name, uint8 _weight) onlyOwner {
-      if (roleExists(_name)) throw;
+      require (!roleExists(_name));
       systemRoles[_name] = Role({
         name:_name,
         weight: _weight
@@ -53,13 +52,12 @@ contract RoleDirectory is Ownable {
 
   // A shorthand function to add a role with the lowest weight. This can be
   // used for systems where an exact role is required, with no hierarchy.
-  function addSystemRole(String _name) onlyOwner {
+  function addSystemRole(string _name) onlyOwner {
     addSystemRole(_name,0);
   }
 
-  function roleExists(string _name) returns (bool) {
+  function roleExists(string _name) constant returns (bool) {
     require(bytes(_name).length > 0);
-    return bytes(systemRoles[_name].name)==0;
-
+    return bytes(systemRoles[_name].name).length!=0;
   }
 }
