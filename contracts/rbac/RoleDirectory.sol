@@ -16,16 +16,16 @@ import '../ownership/Ownable.sol';
  */
 contract RoleDirectory is Ownable {
 
-  
+  struct RoleDetails {
+    uint8 onBitPosition;
+    address[] users;
+  }
   // All the roles available in the system, mapped by Role name to the "on" bit
   // in the mask.
   // To get the mask for a specific role: 1 shift left 'on-bit'-1 e.g. if the on-bit value
   // is 6 then the mask is 1 << 5 => 100000
   // The maximum number of roles is controlled by the size of the mapping target of userRoles.
-  mapping(string=>uint8) private systemRoles;
-
-  // Used to hold the set of users per each role.
-  mapping(string=>address[]) rolesToUsers;
+  mapping(string=>RoleDetails) private systemRoles;
 
   // Mapping of a user (address) to the set of Roles assigned to them. Note that
   // the set of roles is a uint32 mask which is created by adding all roles that
@@ -47,8 +47,20 @@ contract RoleDirectory is Ownable {
   function addSystemRole(string _name) onlyOwner {
       require (!roleExists(_name));
       require (nextRoleBitPosition <= maximumRoles);
-      systemRoles[_name] = nextRoleBitPosition;
+      systemRoles[_name].onBitPosition = nextRoleBitPosition;
       nextRoleBitPosition++;
+  }
+
+  // @dev Owner of the RoleDirectory may remove roles from the system.
+  // It will also remove the role from all users that have it.
+  // @param _name - the name of the new role
+  function removeSystemRole(string _role) onlyOwner {
+      require (roleExists(_role));
+      for (uint i = 0 ; i < systemRoles[_role].users.length; i++) {
+        userRoles[systemRoles[_role].users[i]] &=  ~createMask(_role);
+      }
+      systemRoles[_role].onBitPosition = 0;
+      systemRoles[_role].users.length = 0;
   }
 
   // @dev Adds a role to a user
@@ -58,7 +70,7 @@ contract RoleDirectory is Ownable {
   function addRoleToUser(address _user, string _role) onlyOwner {
     require(roleExists(_role));
     if (!userInRole(_user, _role)) {
-      rolesToUsers[_role].push(_user);
+      systemRoles[_role].users.push(_user);
     }
     userRoles[_user] |=  createMask(_role);
   }
@@ -68,12 +80,13 @@ contract RoleDirectory is Ownable {
   // @param _role - the name of the role to remove
   function removeRoleFromUser(address _user, string _role) onlyOwner {
     require(roleExists(_role));
-    var usersInRole = rolesToUsers[_role].length;
+    var usersInRole = systemRoles[_role].users.length;
     userRoles[_user] &= ~createMask(_role);
-    for (uint i = 0 ; i < rolesToUsers[_role].length; i++) {
-      if (rolesToUsers[_role][i] == _user) {
-        rolesToUsers[_role][i] = rolesToUsers[_role][usersInRole-1];
-        rolesToUsers[_role].length--;
+    for (uint i = 0 ; i < systemRoles[_role].users.length; i++) {
+      if (systemRoles[_role].users[i] == _user) {
+        systemRoles[_role].users[i] = systemRoles[_role].users[usersInRole-1];
+        systemRoles[_role].users.length--;
+        break;
       }
     }
   }
@@ -92,10 +105,10 @@ contract RoleDirectory is Ownable {
   // @return bool - whether the role is registered in the system or not
   function roleExists(string _name) constant returns (bool) {
     require(bytes(_name).length > 0);
-    return systemRoles[_name] > 0;
+    return systemRoles[_name].onBitPosition > 0;
   }
 
   function createMask(string _roleName) internal constant returns (uint32) {
-    return uint32(1 << (systemRoles[_roleName]-1));
+    return uint32(1 << (systemRoles[_roleName].onBitPosition-1));
   }
 }

@@ -14,7 +14,7 @@ contract('RoleDirectory', function(accounts) {
     assert.isTrue(result);
   });
 
-  it("should not allow double role", async function() {
+  it("should not allow role with same name to be added twice", async function() {
     try {
       let result = await roleDirectory.addSystemRole('role_1');
       assert.fail('should have thrown before');
@@ -23,14 +23,12 @@ contract('RoleDirectory', function(accounts) {
     }
   });
 
-
-
   it("should not have a role that was not added", async function() {
     let result = await roleDirectory.roleExists('role_2');
     assert.isFalse(result);
   });
 
-  it("should be able to contain multiple roles", async function() {
+  it("should be able to hold multiple roles", async function() {
     await roleDirectory.addSystemRole('role_2');
     await roleDirectory.addSystemRole('role_3');
     let role1Exists = await roleDirectory.roleExists('role_1');
@@ -60,14 +58,7 @@ contract('RoleDirectory', function(accounts) {
     await roleDirectory.addRoleToUser(1,'role_2');
     let userHasRole1 = await roleDirectory.userInRole(1,'role_1');
     let userHasRole2 = await roleDirectory.userInRole(1,'role_2');
-    assert.isTrue(userHasRole1);
-    assert.isTrue(userHasRole2);
-  });
-
-  it("should find exact role", async function() {
-    await roleDirectory.addRoleToUser(1,'role_1');
-    let userHasRole1 = await roleDirectory.userInRole(1,'role_1');
-    assert.isTrue(userHasRole1);
+    assert.isTrue(userHasRole1 && userHasRole2);
   });
 
   it("should be able to remove role from a user", async function() {
@@ -78,8 +69,7 @@ contract('RoleDirectory', function(accounts) {
     let userHasRole2 = await roleDirectory.userInRole(1,'role_2');
 
     // assert user has both roles before removing any
-    assert.isTrue(userHasRole1);
-    assert.isTrue(userHasRole2);
+    assert.isTrue(userHasRole1 && userHasRole2);
 
     // remove role2, assert it is gone, and that the user still has role1
     await roleDirectory.removeRoleFromUser(1,'role_2');
@@ -92,5 +82,14 @@ contract('RoleDirectory', function(accounts) {
     await roleDirectory.removeRoleFromUser(1,'role_1');
     userHasRole1 = await roleDirectory.userInRole(1,'role_1');
     assert.isFalse(userHasRole1);
+  });
+
+  it ("should remove a system role", async function() {
+    await roleDirectory.addRoleToUser(1,'role_1');
+    let userHasRole1 = await roleDirectory.userInRole(1,'role_1');
+    assert.isTrue(userHasRole1);
+    await roleDirectory.removeSystemRole('role_1');
+    let roleExists = await roleDirectory.roleExists('role_1');
+    assert.isFalse(roleExists);
   });
 });
