@@ -16,6 +16,7 @@ import '../ownership/Ownable.sol';
  */
 contract RoleDirectory is Ownable {
 
+  
   // All the roles available in the system, mapped by Role name to the "on" bit
   // in the mask.
   // To get the mask for a specific role: 1 shift left 'on-bit'-1 e.g. if the on-bit value
@@ -31,9 +32,10 @@ contract RoleDirectory is Ownable {
   // a user has.
   mapping(address=>uint32) private userRoles;
 
-  // The next role to be added will have this value for the shift_left op
+  // When adding a role, this is the position of the 'on bit' in the mask related
+  // to this role. (Used for the shift_left operator)
   // This will be increased after the role is added.
-  uint8 private roleBitCounter = 1;
+  uint8 private nextRoleBitPosition = 1;
 
   // The maximum number of roles. To allow for more roles - the target
   // of mapping in userRoles needs to change.
@@ -44,8 +46,9 @@ contract RoleDirectory is Ownable {
   // @param _name - the name of the new role
   function addSystemRole(string _name) onlyOwner {
       require (!roleExists(_name));
-      systemRoles[_name] = roleBitCounter;
-      roleBitCounter++;
+      require (nextRoleBitPosition <= maximumRoles);
+      systemRoles[_name] = nextRoleBitPosition;
+      nextRoleBitPosition++;
   }
 
   // @dev Adds a role to a user
@@ -54,10 +57,10 @@ contract RoleDirectory is Ownable {
   // @param _role - the name of the role to add to the user
   function addRoleToUser(address _user, string _role) onlyOwner {
     require(roleExists(_role));
-    userRoles[_user] |=  createMask(_role);
     if (!userInRole(_user, _role)) {
       rolesToUsers[_role].push(_user);
     }
+    userRoles[_user] |=  createMask(_role);
   }
 
   // @dev remove a role from user

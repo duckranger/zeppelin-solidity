@@ -21,12 +21,12 @@ contract SampleRoleBasedAccess is Secured {
       lastModifier = msg.sender;
   }
 
-  function onlyAdmin(string _val) withRole('admin') {
+  function onlyAdmin(string _val) hasRole('admin') {
     safe = _val;
     lastModifier = msg.sender;
   }
 
-  function operatorAndAdmin(string _val) withRole('operator') {
+  function operatorAndAdmin(string _val) hasRole('operator') {
     safe = _val;
     lastModifier = msg.sender;
   }
