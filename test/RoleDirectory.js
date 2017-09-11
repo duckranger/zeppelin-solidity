@@ -6,7 +6,7 @@ contract('RoleDirectory', function(accounts) {
 
   beforeEach(async function() {
     roleDirectory = await RoleDirectory.new();
-    await roleDirectory.addSystemRole('role_1');
+    await roleDirectory.addRole('role_1');
   });
 
   it("should store new role", async function() {
@@ -16,7 +16,7 @@ contract('RoleDirectory', function(accounts) {
 
   it("should not allow role with same name to be added twice", async function() {
     try {
-      let result = await roleDirectory.addSystemRole('role_1');
+      let result = await roleDirectory.addRole('role_1');
       assert.fail('should have thrown before');
     } catch(error) {
       assertJump(error);
@@ -29,8 +29,8 @@ contract('RoleDirectory', function(accounts) {
   });
 
   it("should be able to hold multiple roles", async function() {
-    await roleDirectory.addSystemRole('role_2');
-    await roleDirectory.addSystemRole('role_3');
+    await roleDirectory.addRole('role_2');
+    await roleDirectory.addRole('role_3');
     let role1Exists = await roleDirectory.roleExists('role_1');
     let role2Exists = await roleDirectory.roleExists('role_2');
     let role3Exists = await roleDirectory.roleExists('role_3');
@@ -44,7 +44,7 @@ contract('RoleDirectory', function(accounts) {
   });
 
   it("should not assign an extra role to user", async function() {
-    await roleDirectory.addSystemRole('role_2');
+    await roleDirectory.addRole('role_2');
     await roleDirectory.addRoleToUser(1,'role_1');
     let userHasRole1 = await roleDirectory.userInRole(1,'role_1');
     let userHasRole2 = await roleDirectory.userInRole(1,'role_2');
@@ -53,7 +53,7 @@ contract('RoleDirectory', function(accounts) {
   });
 
   it("should allow users to have multiple roles", async function() {
-    await roleDirectory.addSystemRole('role_2');
+    await roleDirectory.addRole('role_2');
     await roleDirectory.addRoleToUser(1,'role_1');
     await roleDirectory.addRoleToUser(1,'role_2');
     let userHasRole1 = await roleDirectory.userInRole(1,'role_1');
@@ -62,7 +62,7 @@ contract('RoleDirectory', function(accounts) {
   });
 
   it("should be able to remove role from a user", async function() {
-    await roleDirectory.addSystemRole('role_2');
+    await roleDirectory.addRole('role_2');
     await roleDirectory.addRoleToUser(1,'role_1');
     await roleDirectory.addRoleToUser(1,'role_2');
     let userHasRole1 = await roleDirectory.userInRole(1,'role_1');
@@ -88,8 +88,17 @@ contract('RoleDirectory', function(accounts) {
     await roleDirectory.addRoleToUser(1,'role_1');
     let userHasRole1 = await roleDirectory.userInRole(1,'role_1');
     assert.isTrue(userHasRole1);
-    await roleDirectory.removeSystemRole('role_1');
+    await roleDirectory.removeRole('role_1');
     let roleExists = await roleDirectory.roleExists('role_1');
     assert.isFalse(roleExists);
+  });
+
+  it("should allow to add a role again after it was removed", async function() {
+    await roleDirectory.removeRole('role_1');
+    let roleExists = await roleDirectory.roleExists('role_1');
+    assert.isFalse(roleExists);
+    await roleDirectory.addRole('role_1');
+    let roleExistsAgain = await roleDirectory.roleExists('role_1');
+    assert.isTrue(roleExistsAgain);
   });
 });

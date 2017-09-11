@@ -44,7 +44,7 @@ contract RoleDirectory is Ownable {
   // @dev Owner of the RoleDirectory may add new roles in the system.
   // The new role has to have a unique name
   // @param _name - the name of the new role
-  function addSystemRole(string _name) onlyOwner {
+  function addRole(string _name) onlyOwner {
       require (!roleExists(_name));
       require (nextRoleBitPosition <= maximumRoles);
       systemRoles[_name].onBitPosition = nextRoleBitPosition;
@@ -54,7 +54,7 @@ contract RoleDirectory is Ownable {
   // @dev Owner of the RoleDirectory may remove roles from the system.
   // It will also remove the role from all users that have it.
   // @param _name - the name of the new role
-  function removeSystemRole(string _role) onlyOwner {
+  function removeRole(string _role) onlyOwner {
       require (roleExists(_role));
       for (uint i = 0 ; i < systemRoles[_role].users.length; i++) {
         userRoles[systemRoles[_role].users[i]] &=  ~createMask(_role);
