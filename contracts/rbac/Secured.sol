@@ -26,8 +26,9 @@ contract Secured {
    * @dev throws if the caller does not have the role or a higher weight role
    * assigned to them.
    */
-  modifier withRole(string _name) {
-    require(roleDirectory.userInRole(msg.sender, _name));
+  modifier hasRole(string _role) {
+    require(roleDirectory.userInRole(msg.sender, _role));
     _;
   }
+
 }

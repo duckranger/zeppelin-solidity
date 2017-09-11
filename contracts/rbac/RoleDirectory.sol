@@ -16,40 +16,36 @@ import '../ownership/Ownable.sol';
  */
 contract RoleDirectory is Ownable {
 
-  // A definition of a single Role in the system
-  struct Role {
-    string name;   //Role's name - must be unique
-    uint8 weight;  //Role's weight
-  }
+  // All the roles available in the system, mapped by Role name to the "on" bit
+  // in the mask.
+  // To get the mask for a specific role: 1 shift left 'on-bit'-1 e.g. if the on-bit value
+  // is 6 then the mask is 1 << 5 => 100000
+  // The maximum number of roles is controlled by the size of the mapping target of userRoles.
+  mapping(string=>uint8) private systemRoles;
 
-  // All the roles available in the system, mapped by Role.name
-  mapping(string=>Role) private systemRoles;
+  // Used to hold the set of users per each role.
+  mapping(string=>address[]) rolesToUsers;
 
-  // Mapping of a user (address) to the set of Roles assigned to them
-  mapping(address=>Role[]) private userRoles;
+  // Mapping of a user (address) to the set of Roles assigned to them. Note that
+  // the set of roles is a uint32 mask which is created by adding all roles that
+  // a user has.
+  mapping(address=>uint32) private userRoles;
+
+  // The next role to be added will have this value for the shift_left op
+  // This will be increased after the role is added.
+  uint8 private roleBitCounter = 1;
+
+  // The maximum number of roles. To allow for more roles - the target
+  // of mapping in userRoles needs to change.
+  uint8 private maximumRoles = 32;
 
   // @dev Owner of the RoleDirectory may add new roles in the system.
   // The new role has to have a unique name
   // @param _name - the name of the new role
-  // @param _weight - weight to the role. This is used for hierarchy
-  function addSystemRole(string _name, uint8 _weight) onlyOwner {
+  function addSystemRole(string _name) onlyOwner {
       require (!roleExists(_name));
-      systemRoles[_name] = Role({
-        name:_name,
-        weight: _weight
-      });
-  }
-
-  // @dev A shorthand function to add a role with no weight. This can be
-  // used for systems where an exact role is required, with no hierarchy.
-  // @param _name - the name of the new role
-  function addZeroWeightSystemRole(string _name) onlyOwner {
-    addSystemRole(_name,0);
-  }
-
-  function changeRoleWeight(string _name, uint8 _newWeight) {
-    require (roleExists(_name));
-    systemRoles[_name].weight = _newWeight;
+      systemRoles[_name] = roleBitCounter;
+      roleBitCounter++;
   }
 
   // @dev Adds a role to a user
@@ -58,8 +54,9 @@ contract RoleDirectory is Ownable {
   // @param _role - the name of the role to add to the user
   function addRoleToUser(address _user, string _role) onlyOwner {
     require(roleExists(_role));
+    userRoles[_user] |=  createMask(_role);
     if (!userInRole(_user, _role)) {
-      userRoles[_user].push(systemRoles[_role]);
+      rolesToUsers[_role].push(_user);
     }
   }
 
@@ -68,45 +65,23 @@ contract RoleDirectory is Ownable {
   // @param _role - the name of the role to remove
   function removeRoleFromUser(address _user, string _role) onlyOwner {
     require(roleExists(_role));
-    var numRolesForUser = userRoles[_user].length;
-    if (numRolesForUser!=0) {
-      for (uint i = 0 ; i < userRoles[_user].length; i++) {
-        if (sha3(userRoles[_user][i].name) == sha3(_role)) {
-          userRoles[_user][i] = userRoles[_user][numRolesForUser-1];
-          userRoles[_user].length--;
-        }
+    var usersInRole = rolesToUsers[_role].length;
+    userRoles[_user] &= ~createMask(_role);
+    for (uint i = 0 ; i < rolesToUsers[_role].length; i++) {
+      if (rolesToUsers[_role][i] == _user) {
+        rolesToUsers[_role][i] = rolesToUsers[_role][usersInRole-1];
+        rolesToUsers[_role].length--;
       }
     }
   }
 
-  // @dev Checks whether the user has a specific role
+  // @dev Checks whether the user has the role assigned
   // @param _user - the address to check the role for
   // @param _roleName - the role to check for
-  // @return bool - whether the user has the role assigned to them or not
-  function userInExactRole(address _user, string _roleName) constant returns (bool) {
-    for (uint i = 0 ; i < userRoles[_user].length; i++) {
-      if (sha3(userRoles[_user][i].name) == sha3(_roleName)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  // @dev Checks whether a specific user has a role assigned, or - they have
-  // a higher weight role assigned to them.
-  // @param _user - the address to check the role for
-  // @param _roleName - the role to check for
-  // @return bool - whether the user has the either the exact role or a higher weight
-  // role assigned to them or not
+  // @return bool - whether the user has the role assigned to them
   function userInRole(address _user, string _roleName) constant returns (bool) {
     require(roleExists(_roleName));
-    for (uint i = 0 ; i < userRoles[_user].length; i++) {
-      if ( (userRoles[_user][i].weight > systemRoles[_roleName].weight) ||
-           (sha3(userRoles[_user][i].name) == sha3(_roleName)) ) {
-        return true;
-      }
-    }
-    return false;
+    return userRoles[_user] & createMask(_roleName) > 0;
   }
 
   // @dev Checks whether a role exists in the system.
@@ -114,6 +89,10 @@ contract RoleDirectory is Ownable {
   // @return bool - whether the role is registered in the system or not
   function roleExists(string _name) constant returns (bool) {
     require(bytes(_name).length > 0);
-    return bytes(systemRoles[_name].name).length!=0;
+    return systemRoles[_name] > 0;
+  }
+
+  function createMask(string _roleName) internal constant returns (uint32) {
+    return uint32(1 << (systemRoles[_roleName]-1));
   }
 }
